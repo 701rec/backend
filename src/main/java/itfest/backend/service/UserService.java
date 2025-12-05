@@ -2,6 +2,7 @@ package itfest.backend.service;
 
 import itfest.backend.dto.UserProfile;
 import itfest.backend.exception.ResourceNotFoundException;
+import itfest.backend.mapper.UniversityMapper;
 import itfest.backend.model.User;
 import itfest.backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -12,6 +13,7 @@ import org.springframework.stereotype.Service;
 public class UserService {
 
     private final UserRepository userRepository;
+    private final UniversityMapper universityMapper;
 
     public UserProfile getProfile(Long userId) {
         User user = userRepository.findById(userId)
@@ -27,7 +29,7 @@ public class UserService {
                 .entScore(user.getEntScore())
                 .location(user.getLocation())
                 .avatarUrl(user.getAvatarUrl())
-                .favorites(user.getFavorites())
+                .favorites(universityMapper.toDtoList(user.getFavorites()))
                 .build();
     }
 }

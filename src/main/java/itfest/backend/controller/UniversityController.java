@@ -1,7 +1,7 @@
 package itfest.backend.controller;
 
-import itfest.backend.model.University;
-import itfest.backend.repository.UniversityRepository;
+import itfest.backend.dto.UniversityResponse;
+import itfest.backend.service.UniversityService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -13,21 +13,16 @@ import java.util.List;
 @RequiredArgsConstructor
 public class UniversityController {
 
-    private final UniversityRepository universityRepository;
+    private final UniversityService universityService;
 
-    // GET /api/universities?search=IT
     @GetMapping
-    public List<University> getAll(@RequestParam(required = false) String search) {
-        if (search != null && !search.isEmpty()) {
-            return universityRepository.search(search);
-        }
-        return universityRepository.findAll();
+    public List<UniversityResponse> getAll(@RequestParam(required = false) String search) {
+        return universityService.getAllUniversities(search);
     }
 
-    // GET /api/universities/1
     @GetMapping("/{id}")
-    public ResponseEntity<University> getById(@PathVariable Long id) {
-        return universityRepository.findById(id)
+    public ResponseEntity<UniversityResponse> getById(@PathVariable Long id) {
+        return universityService.getUniversityById(id)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }

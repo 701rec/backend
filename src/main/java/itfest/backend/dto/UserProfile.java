@@ -19,5 +19,5 @@ public class UserProfile {
     private String location;
     private String avatarUrl;
 
-    private List<University> favorites;
+    private List<UniversityResponse> favorites;
 }
