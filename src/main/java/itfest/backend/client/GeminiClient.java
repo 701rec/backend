@@ -20,13 +20,9 @@ public class GeminiClient {
 
     private static final String GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
 
-    public String generateText(String prompt) {
+    public String generateChat(List<GeminiRequest.Content> chatHistory) {
         try {
-            GeminiRequest requestBody = new GeminiRequest(
-                    List.of(new GeminiRequest.Content(
-                            List.of(new GeminiRequest.Part(prompt))
-                    ))
-            );
+            GeminiRequest requestBody = new GeminiRequest(chatHistory);
 
             GeminiResponse response = restClient.post()
                     .uri(GEMINI_URL + "?key=" + apiKey)

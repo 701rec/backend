@@ -5,6 +5,7 @@ import itfest.backend.mapper.UniversityMapper;
 import itfest.backend.model.University;
 import itfest.backend.repository.UniversityRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -22,7 +23,7 @@ public class UniversityService {
         if (search != null && !search.isEmpty()) {
             universities = universityRepository.search(search);
         } else {
-            universities = universityRepository.findAll();
+            universities = universityRepository.findAll(Sort.by(Sort.Direction.DESC, "id"));
         }
         return universityMapper.toDtoList(universities);
     }
