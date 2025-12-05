@@ -1,6 +1,8 @@
 package itfest.backend.controller;
 
 import itfest.backend.dto.AiChatRequest;
+import itfest.backend.dto.GrantPrediction;
+import itfest.backend.dto.GrantRequest;
 import itfest.backend.service.AiService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -20,5 +22,11 @@ public class AiController {
         String answer = aiService.getAnswer(request.getUserId(), request.getPrompt());
 
         return ResponseEntity.ok(Map.of("result", answer));
+    }
+
+    @PostMapping("/grant-chance")
+    public ResponseEntity<GrantPrediction> calculateGrantChance(@RequestBody GrantRequest request) {
+        GrantPrediction prediction = aiService.calculateGrantChance(request.getScore(), request.getPreferredMajor());
+        return ResponseEntity.ok(prediction);
     }
 }

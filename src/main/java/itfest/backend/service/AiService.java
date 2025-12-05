@@ -1,6 +1,8 @@
 package itfest.backend.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import itfest.backend.client.GeminiClient;
+import itfest.backend.dto.GrantPrediction;
 import itfest.backend.dto.gemini.GeminiRequest;
 import itfest.backend.exception.ResourceNotFoundException;
 import itfest.backend.model.AiRequest;
@@ -27,6 +29,7 @@ public class AiService {
     private final UserRepository userRepository;
     private final UniversityRepository universityRepository;
     private final GeminiClient geminiClient;
+    private final ObjectMapper objectMapper;
 
     private static final String SYSTEM_PROMPT_TEMPLATE = """
             Роль: Ты — консультант по поступлению (IT Fest).
@@ -94,6 +97,51 @@ public class AiService {
         saveRequest(user, userPrompt, aiText);
 
         return aiText;
+    }
+
+    public GrantPrediction calculateGrantChance(Integer score, String major) {
+        if (score == null) score = 0;
+
+        // Если специальность не указана, ставим "любая"
+        String targetMajor = (major != null && !major.isEmpty()) ? major : "Выбранная специальность";
+
+        String prompt = String.format("""
+                Роль: Опытный консультант приемной комиссии вузов Казахстана (2025).
+                Задача: Оцени шанс поступления на грант (0-100%%) на основе статистики прошлых лет.
+                
+                Вводные данные:
+                - Балл ЕНТ: %d / 140
+                - Специальность: %s
+                
+                Инструкция для логики оценки:
+                1. "Медицина", "Стоматология", "Право", "Международные отношения" — очень высокий конкурс (нужно 120+ для высокого шанса).
+                2. "IT", "Инженерия", "Педагогика" — средний/высокий конкурс (нужно 95-110+).
+                3. "Сельское хозяйство", "Ветеринария" — низкий конкурс (хватает 60-75).
+                4. Если балл < 50 (или < 70 для медицины) — шанс 0%%.
+                
+                Верни ответ СТРОГО в формате JSON:
+                {
+                  "percentage": (целое число от 0 до 99),
+                  "comment": "Короткий, но полезный комментарий именно про указанную специальность (макс 15 слов)."
+                }
+                """, score, targetMajor);
+
+        try {
+            List<GeminiRequest.Content> content = List.of(
+                    new GeminiRequest.Content("user", List.of(new GeminiRequest.Part(prompt)))
+            );
+
+            String jsonResponse = geminiClient.generateChat(content);
+
+            // Очистка от возможных markdown символов
+            jsonResponse = jsonResponse.replace("```json", "").replace("```", "").trim();
+
+            return objectMapper.readValue(jsonResponse, GrantPrediction.class);
+
+        } catch (Exception e) {
+            log.error("Ошибка парсинга AI ответа: {}", e.getMessage());
+            return new GrantPrediction(0, "Не удалось рассчитать. Попробуйте позже.");
+        }
     }
 
     private void saveRequest(User user, String prompt, String response) {
