@@ -10,12 +10,15 @@ import itfest.backend.repository.AiRequestRepository;
 import itfest.backend.repository.UniversityRepository;
 import itfest.backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AiService {
@@ -27,62 +30,56 @@ public class AiService {
 
     private static final String SYSTEM_PROMPT_TEMPLATE = """
             Роль: Ты — консультант по поступлению (IT Fest).
+            Имя студента: %s. Город: %s. ЕНТ: %s.
             
-            Данные пользователя:
-            - Имя: %s
-            - Балл ЕНТ: %s
-            - Город: %s
-            
-            Твои правила:
-            1. Используй данные из списка ниже для ответов на вопросы о ценах, специальностях и общежитиях.
-            2. Если данных нет в списке, отвечай, что "в моей базе пока нет информации об этом вузе", и предлагай посмотреть другие.
-            3. Веди себя естественно.
-            
-            НАЙДЕННЫЕ УНИВЕРСИТЕТЫ (Релевантные запросу):
+            Информация из базы данных (используй ТОЛЬКО её для фактов о ценах и программах):
             %s
+            
+            Отвечай кратко, дружелюбно и по делу.
             """;
 
     public String getAnswer(Long userId, String userPrompt) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Пользователь не найден"));
 
+        // 1. Очистка и подготовка ключевых слов (берем слова длиннее 3 букв)
+        List<String> keywords = Arrays.stream(userPrompt.split("\\s+"))
+                .map(s -> s.replaceAll("[^a-zA-Zа-яА-Я0-9]", "")) // убираем знаки препинания
+                .filter(s -> s.length() > 3)
+                .collect(Collectors.toList());
+
         List<University> relevantUniversities;
 
-        if (isGreeting(userPrompt)) {
+        // 2. Умный поиск (ОДИН ЗАПРОС вместо цикла)
+        if (keywords.isEmpty() || isGreeting(userPrompt)) {
             relevantUniversities = new ArrayList<>();
         } else {
-            String[] words = userPrompt.replaceAll("[^a-zA-Zа-яА-Я0-9 ]", "").split("\\s+");
-            Set<University> foundSet = new HashSet<>();
-
-            for (String word : words) {
-                if (word.length() >= 2) {
-                    foundSet.addAll(universityRepository.searchByKeyword(word));
-                }
-            }
-
-            relevantUniversities = new ArrayList<>(foundSet);
-
-            if (relevantUniversities.isEmpty() && (userPrompt.toLowerCase().contains("поступ") || userPrompt.toLowerCase().contains("универ"))) {
-                relevantUniversities = universityRepository.findTopRated(PageRequest.of(0, 3));
-            }
+            Specification<University> spec = UniversitySpecification.searchByKeywords(keywords);
+            // Ищем вузы по спецификации, берем первые 5 совпадений
+            relevantUniversities = universityRepository.findAll(spec, PageRequest.of(0, 5)).getContent();
         }
 
+        // Если ничего не нашли, но вопрос про поступление - подкинем топовые вузы
+        if (relevantUniversities.isEmpty() && !isGreeting(userPrompt)) {
+            relevantUniversities = universityRepository.findTopRated(PageRequest.of(0, 3));
+        }
+
+        // 3. Формирование контекста
         String dbContext = formatUniversityData(relevantUniversities);
-
-        String entScore = (user.getEntScore() != null) ? String.valueOf(user.getEntScore()) : "Не указано";
-        String location = (user.getLocation() != null) ? user.getLocation() : "Не указан";
-        String name = (user.getFirstName() != null) ? user.getFirstName() : "Друг";
-
         String systemInstruction = String.format(SYSTEM_PROMPT_TEMPLATE,
-                name, entScore, location, dbContext);
+                user.getFirstName(),
+                user.getLocation() != null ? user.getLocation() : "Неизвестно",
+                user.getEntScore() != null ? user.getEntScore() : "Нет",
+                dbContext);
 
+        // 4. Сборка истории чата
         List<GeminiRequest.Content> conversation = new ArrayList<>();
         conversation.add(new GeminiRequest.Content("user", List.of(new GeminiRequest.Part(systemInstruction))));
-        conversation.add(new GeminiRequest.Content("model", List.of(new GeminiRequest.Part("Принято."))));
+        conversation.add(new GeminiRequest.Content("model", List.of(new GeminiRequest.Part("Понял. Готов отвечать."))));
 
-        List<AiRequest> history = aiRequestRepository.findLastRequests(userId, PageRequest.of(0, 6));
+        // Добавляем историю переписки (последние 4 сообщения, чтобы не перегружать контекст)
+        List<AiRequest> history = aiRequestRepository.findLastRequests(userId, PageRequest.of(0, 4));
         Collections.reverse(history);
-
         for (AiRequest req : history) {
             conversation.add(new GeminiRequest.Content("user", List.of(new GeminiRequest.Part(req.getInputText()))));
             conversation.add(new GeminiRequest.Content("model", List.of(new GeminiRequest.Part(req.getAiResponse()))));
@@ -90,32 +87,34 @@ public class AiService {
 
         conversation.add(new GeminiRequest.Content("user", List.of(new GeminiRequest.Part(userPrompt))));
 
+        // 5. Запрос к AI
         String aiText = geminiClient.generateChat(conversation);
 
-        AiRequest newRecord = AiRequest.builder()
-                .user(user)
-                .inputText(userPrompt)
-                .aiResponse(aiText)
-                .build();
-        aiRequestRepository.save(newRecord);
+        // 6. Сохранение
+        saveRequest(user, userPrompt, aiText);
 
         return aiText;
     }
 
+    private void saveRequest(User user, String prompt, String response) {
+        AiRequest newRecord = AiRequest.builder()
+                .user(user)
+                .inputText(prompt)
+                .aiResponse(response)
+                .build();
+        aiRequestRepository.save(newRecord);
+    }
+
     private String formatUniversityData(List<University> universities) {
-        if (universities == null || universities.isEmpty()) {
-            return "Нет конкретной информации в базе по этому запросу.";
-        }
+        if (universities.isEmpty()) return "Нет данных о конкретных вузах по этому запросу.";
         return universities.stream()
-                .limit(5)
-                .map(u -> String.format("[%s (%s): %s тг, Рейтинг %s, Профиль: %s]",
-                        u.getName(), u.getShortName(), u.getPrice(), u.getRating(), u.getFocus()))
+                .map(u -> String.format("- %s (%s). Цена: %s. Рейтинг: %s. Инфо: %s",
+                        u.getName(), u.getShortName(), u.getPrice(), u.getRating(), u.getDescription().substring(0, Math.min(u.getDescription().length(), 100)) + "..."))
                 .collect(Collectors.joining("\n"));
     }
 
     private boolean isGreeting(String text) {
-        if (text == null) return false;
         String s = text.toLowerCase().trim();
-        return s.equals("привет") || s.equals("салам") || s.equals("hello") || s.equals("hi") || s.equals("здравствуйте");
+        return s.matches("^(привет|здравствуйте|hello|hi|салам).*");
     }
 }

@@ -7,6 +7,7 @@ import itfest.backend.model.User;
 import itfest.backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -15,6 +16,7 @@ public class UserService {
     private final UserRepository userRepository;
     private final UniversityMapper universityMapper;
 
+    @Transactional(readOnly = true)
     public UserProfile getProfile(Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Пользователь не найден"));

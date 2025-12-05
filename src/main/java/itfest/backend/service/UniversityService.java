@@ -6,8 +6,10 @@ import itfest.backend.model.University;
 import itfest.backend.repository.UniversityRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification; // Импорт спецификации
 import org.springframework.stereotype.Service;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
@@ -22,8 +24,16 @@ public class UniversityService {
         List<University> universities;
 
         if (search != null && !search.isEmpty()) {
-            universities = universityRepository.searchByKeyword(search);
+            // 1. Разбиваем строку поиска на слова (чтобы искать "МУИТ Алматы" как два слова)
+            List<String> keywords = Arrays.asList(search.split("\\s+"));
+
+            // 2. Используем нашу новую спецификацию (как в AI сервисе)
+            Specification<University> spec = UniversitySpecification.searchByKeywords(keywords);
+
+            // 3. Вызываем findAll со спецификацией
+            universities = universityRepository.findAll(spec);
         } else {
+            // Если поиска нет, возвращаем все, сортируя по ID
             universities = universityRepository.findAll(Sort.by(Sort.Direction.DESC, "id"));
         }
 
