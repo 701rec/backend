@@ -1,6 +1,7 @@
 package itfest.backend.service;
 
 import itfest.backend.dto.UserProfile;
+import itfest.backend.exception.ResourceNotFoundException;
 import itfest.backend.model.User;
 import itfest.backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -14,7 +15,7 @@ public class UserService {
 
     public UserProfile getProfile(Long userId) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("Пользователь не найден"));
+                .orElseThrow(() -> new ResourceNotFoundException("Пользователь не найден"));
 
         return UserProfile.builder()
                 .id(user.getId())
