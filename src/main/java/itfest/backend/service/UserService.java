@@ -2,7 +2,6 @@ package itfest.backend.service;
 
 import itfest.backend.dto.UserProfile;
 import itfest.backend.exception.ResourceNotFoundException;
-import itfest.backend.mapper.UniversityMapper;
 import itfest.backend.model.User;
 import itfest.backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -14,7 +13,6 @@ import org.springframework.transaction.annotation.Transactional;
 public class UserService {
 
     private final UserRepository userRepository;
-    private final UniversityMapper universityMapper;
 
     @Transactional(readOnly = true)
     public UserProfile getProfile(Long userId) {
@@ -31,7 +29,6 @@ public class UserService {
                 .entScore(user.getEntScore())
                 .location(user.getLocation())
                 .avatarUrl(user.getAvatarUrl())
-                .favorites(universityMapper.toDtoList(user.getFavorites()))
                 .build();
     }
 }

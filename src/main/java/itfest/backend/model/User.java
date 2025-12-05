@@ -35,13 +35,4 @@ public class User {
     private Integer entScore;   // ЕНТ Балл (115)
     private String location;    // Город (Алматы, Казахстан)
     private String avatarUrl;   // Ссылка на фото
-
-    // --- Избранные ВУЗы ---
-    @ManyToMany(fetch = FetchType.LAZY)
-    @JoinTable(
-            name = "user_favorites",
-            joinColumns = @JoinColumn(name = "user_id"),
-            inverseJoinColumns = @JoinColumn(name = "university_id")
-    )
-    private List<University> favorites;
 }

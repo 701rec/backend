@@ -18,6 +18,4 @@ public class UserProfile {
     private Integer entScore;
     private String location;
     private String avatarUrl;
-
-    private List<UniversityResponse> favorites;
 }
