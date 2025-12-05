@@ -20,6 +20,7 @@ spring:
   flyway:
     enabled: true
     baseline-on-migrate: true
+    clean-disabled: false
 
 app:
   gemini-api-key: ${GEMINI_API_KEY}

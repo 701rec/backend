@@ -6,6 +6,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
+
 @Data
 @Builder
 @NoArgsConstructor
@@ -26,4 +28,20 @@ public class User {
 
     @Enumerated(EnumType.STRING)
     private Role role;
+
+    private String firstName;   // Имя (Alikhan)
+    private String lastName;    // Фамилия (Student)
+    private String status;      // Статус (Абитуриент)
+    private Integer entScore;   // ЕНТ Балл (115)
+    private String location;    // Город (Алматы, Казахстан)
+    private String avatarUrl;   // Ссылка на фото
+
+    // --- Избранные ВУЗы ---
+    @ManyToMany(fetch = FetchType.EAGER)
+    @JoinTable(
+            name = "user_favorites",
+            joinColumns = @JoinColumn(name = "user_id"),
+            inverseJoinColumns = @JoinColumn(name = "university_id")
+    )
+    private List<University> favorites;
 }
