@@ -24,7 +24,7 @@ public class AiController {
         return ResponseEntity.ok(Map.of("result", answer));
     }
 
-    @PostMapping("/grant-chance")
+    @PostMapping("/grant")
     public ResponseEntity<GrantPrediction> calculateGrantChance(@RequestBody GrantRequest request) {
         GrantPrediction prediction = aiService.calculateGrantChance(request.getScore(), request.getPreferredMajor());
         return ResponseEntity.ok(prediction);
