@@ -20,11 +20,13 @@ public class UniversityService {
 
     public List<UniversityResponse> getAllUniversities(String search) {
         List<University> universities;
+
         if (search != null && !search.isEmpty()) {
-            universities = universityRepository.search(search);
+            universities = universityRepository.searchByKeyword(search);
         } else {
             universities = universityRepository.findAll(Sort.by(Sort.Direction.DESC, "id"));
         }
+
         return universityMapper.toDtoList(universities);
     }
 

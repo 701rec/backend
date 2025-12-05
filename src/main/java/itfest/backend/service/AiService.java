@@ -13,9 +13,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -27,49 +25,60 @@ public class AiService {
     private final UniversityRepository universityRepository;
     private final GeminiClient geminiClient;
 
-
     private static final String SYSTEM_PROMPT_TEMPLATE = """
-            Роль: Ты — профессиональный консультант по образованию.
+            Роль: Ты — консультант по поступлению (IT Fest).
             
             Данные пользователя:
             - Имя: %s
             - Балл ЕНТ: %s
             - Город: %s
             
-            Инструкции: 
-            1. Если пользователь спрашивает "куда поступить", опирайся на его балл ЕНТ. 
-            2. Если пользователь не указал город, предлагай варианты в его родном городе (%s). 
-            3. ИСПОЛЬЗУЙ предоставленную ниже информацию об университетах для ответа. Если информации нет, отвечай общими знаниями.
-            4. Не придумывай цены и телефоны, если их нет в предоставленном списке.
+            Твои правила:
+            1. Используй данные из списка ниже для ответов на вопросы о ценах, специальностях и общежитиях.
+            2. Если данных нет в списке, отвечай, что "в моей базе пока нет информации об этом вузе", и предлагай посмотреть другие.
+            3. Веди себя естественно.
             
-            Информация из нашей базы данных (учитывай её в первую очередь!):
+            НАЙДЕННЫЕ УНИВЕРСИТЕТЫ (Релевантные запросу):
             %s
-            
-            Твоя задача — вести связный диалог. Помни предыдущие вопросы.
             """;
 
     public String getAnswer(Long userId, String userPrompt) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Пользователь не найден"));
 
-        List<University> foundUniversities = universityRepository.search(userPrompt);
+        List<University> relevantUniversities;
 
-        if (foundUniversities.isEmpty() && userPrompt.toLowerCase().contains("универ")) {
-            foundUniversities = universityRepository.findAll().stream().limit(3).toList();
+        if (isGreeting(userPrompt)) {
+            relevantUniversities = new ArrayList<>();
+        } else {
+            String[] words = userPrompt.replaceAll("[^a-zA-Zа-яА-Я0-9 ]", "").split("\\s+");
+            Set<University> foundSet = new HashSet<>();
+
+            for (String word : words) {
+                if (word.length() >= 2) {
+                    foundSet.addAll(universityRepository.searchByKeyword(word));
+                }
+            }
+
+            relevantUniversities = new ArrayList<>(foundSet);
+
+            if (relevantUniversities.isEmpty() && (userPrompt.toLowerCase().contains("поступ") || userPrompt.toLowerCase().contains("универ"))) {
+                relevantUniversities = universityRepository.findTopRated(PageRequest.of(0, 3));
+            }
         }
 
-        String dbContext = formatUniversityData(foundUniversities);
+        String dbContext = formatUniversityData(relevantUniversities);
 
         String entScore = (user.getEntScore() != null) ? String.valueOf(user.getEntScore()) : "Не указано";
         String location = (user.getLocation() != null) ? user.getLocation() : "Не указан";
-        String name = (user.getFirstName() != null) ? user.getFirstName() : "Абитуриент";
+        String name = (user.getFirstName() != null) ? user.getFirstName() : "Друг";
 
         String systemInstruction = String.format(SYSTEM_PROMPT_TEMPLATE,
-                name, entScore, location, location, dbContext);
+                name, entScore, location, dbContext);
 
         List<GeminiRequest.Content> conversation = new ArrayList<>();
         conversation.add(new GeminiRequest.Content("user", List.of(new GeminiRequest.Part(systemInstruction))));
-        conversation.add(new GeminiRequest.Content("model", List.of(new GeminiRequest.Part("Понял, данные базы принял. Готов отвечать."))));
+        conversation.add(new GeminiRequest.Content("model", List.of(new GeminiRequest.Part("Принято."))));
 
         List<AiRequest> history = aiRequestRepository.findLastRequests(userId, PageRequest.of(0, 6));
         Collections.reverse(history);
@@ -98,9 +107,15 @@ public class AiService {
             return "Нет конкретной информации в базе по этому запросу.";
         }
         return universities.stream()
-                .map(u -> String.format("- %s (%s): Цена: %s, Рейтинг: %s, Гранты: %s, Адрес: %s",
-                        u.getName(), u.getShortName(), u.getPrice(), u.getRating(),
-                        (u.getMilitary() ? "Есть военка" : "Нет военки"), u.getLocation()))
+                .limit(5)
+                .map(u -> String.format("[%s (%s): %s тг, Рейтинг %s, Профиль: %s]",
+                        u.getName(), u.getShortName(), u.getPrice(), u.getRating(), u.getFocus()))
                 .collect(Collectors.joining("\n"));
+    }
+
+    private boolean isGreeting(String text) {
+        if (text == null) return false;
+        String s = text.toLowerCase().trim();
+        return s.equals("привет") || s.equals("салам") || s.equals("hello") || s.equals("hi") || s.equals("здравствуйте");
     }
 }
