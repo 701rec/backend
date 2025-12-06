@@ -3,9 +3,9 @@ spring:
     name: ai-backend
 
   datasource:
-    url: ${DB_URL}
-    username: ${DB_USER}
-    password: ${DB_PASS}
+    url: ${DB_URL:jdbc:postgresql://dpg-d4pasifdiees73ejbac0-a.frankfurt-postgres.render.com:5432/universe_db_ajgz?sslmode=require}
+    username: ${DB_USER:universe_db_ajgz_user}
+    password: ${DB_PASS:uPlaYHwAo9MQjNGTXGe8226FqxBpkz8G}
     driver-class-name: org.postgresql.Driver
 
   jpa:
@@ -16,6 +16,7 @@ spring:
     properties:
       hibernate:
         format_sql: true
+    open-in-view: false
 
   flyway:
     enabled: true
@@ -26,4 +27,4 @@ app:
   gemini-api-key: ${GEMINI_API_KEY}
 
 server:
-  address: 0.0.0.0
+  port: 8080
