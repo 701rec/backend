@@ -6,7 +6,6 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.util.List;
 
 @Data
 @Builder
@@ -29,10 +28,10 @@ public class User {
     @Enumerated(EnumType.STRING)
     private Role role;
 
-    private String firstName;   // Имя (Alikhan)
-    private String lastName;    // Фамилия (Student)
-    private String status;      // Статус (Абитуриент)
-    private Integer entScore;   // ЕНТ Балл (115)
-    private String location;    // Город (Алматы, Казахстан)
-    private String avatarUrl;   // Ссылка на фото
+    private String firstName;
+    private String lastName;
+    private String status;
+    private Integer entScore;
+    private String location;
+    private String avatarUrl;
 }

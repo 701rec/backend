@@ -3,14 +3,14 @@ package itfest.backend.client;
 import itfest.backend.dto.gemini.GeminiRequest;
 import itfest.backend.dto.gemini.GeminiResponse;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j; // Импорт для логов
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
 import java.util.List;
 
-@Slf4j // Автоматически создает переменную log
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class GeminiClient {
@@ -20,8 +20,7 @@ public class GeminiClient {
     @Value("${app.gemini-api-key}")
     private String apiKey;
 
-    // Вынесли модель в переменную (можно будет менять через конфиг)
-    private static final String MODEL_ID = "gemini-2.0-flash";
+    private static final String MODEL_ID = "gemini-2.5-flash";
     private static final String BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models/";
 
     public String generateChat(List<GeminiRequest.Content> chatHistory) {

@@ -13,7 +13,6 @@ public class UserController {
 
     private final UserService userService;
 
-    // GET /api/users/1/profile
     @GetMapping("/{id}/profile")
     public ResponseEntity<UserProfile> getProfile(@PathVariable Long id) {
         return ResponseEntity.ok(userService.getProfile(id));

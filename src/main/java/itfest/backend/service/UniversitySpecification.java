@@ -10,7 +10,6 @@ public class UniversitySpecification {
     public static Specification<University> searchByKeywords(List<String> keywords) {
         return (root, query, builder) -> {
             if (keywords == null || keywords.isEmpty()) {
-                // Если ключевых слов нет — возвращаем условие "всегда истина" (показать всё)
                 return builder.conjunction();
             }
 
@@ -19,7 +18,6 @@ public class UniversitySpecification {
             for (String word : keywords) {
                 String pattern = "%" + word.toLowerCase() + "%";
 
-                // Создаем спецификацию для текущего слова
                 Specification<University> wordSpec = (r, q, b) -> b.or(
                         b.like(b.lower(r.get("name")), pattern),
                         b.like(b.lower(r.get("shortName")), pattern),
@@ -27,15 +25,13 @@ public class UniversitySpecification {
                         b.like(b.lower(r.get("description")), pattern)
                 );
 
-                // Объединяем спецификации
                 if (finalSpec == null) {
-                    finalSpec = wordSpec; // Если это первое слово, оно становится основой
+                    finalSpec = wordSpec;
                 } else {
-                    finalSpec = finalSpec.or(wordSpec); // Иначе добавляем через OR
+                    finalSpec = finalSpec.or(wordSpec);
                 }
             }
 
-            // Если по какой-то причине finalSpec остался null (хотя проверка выше это исключает), вернем всё
             if (finalSpec == null) {
                 return builder.conjunction();
             }

@@ -1,10 +1,7 @@
 package itfest.backend.dto;
 
-import itfest.backend.model.University;
 import lombok.Builder;
 import lombok.Data;
-
-import java.util.List;
 
 @Data
 @Builder

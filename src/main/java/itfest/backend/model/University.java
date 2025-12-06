@@ -20,25 +20,24 @@ public class University {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private String name;        // "International IT University"
-    private String shortName;   // "IITU (МУИТ)"
-    private String type;        // "IT & Инжиниринг"
-    private String price;       // "1.2 млн ₸" (храним строкой для простоты)
-    private Double rating;      // 4.9
-    private String location;    // "Алматы"
-    private String imageUrl;    // Ссылка на фото
+    private String name;
+    private String shortName;
+    private String type;
+    private String price;
+    private Double rating;
+    private String location;
+    private String imageUrl;
 
     @Column(columnDefinition = "TEXT")
-    private String description; // Полное описание
+    private String description;
 
-    private String contacts;    // "+7 (727)..."
-    private String website;     // "www.iitu.kz"
+    private String contacts;
+    private String website;
 
-    private Boolean military;   // Военная кафедра (true/false)
-    private Boolean dorm;       // Общежитие (true/false)
-    private String focus;       // Профиль (например "IT")
+    private Boolean military;
+    private Boolean dorm;
+    private String focus;
 
-    // Список программ (Computer Science, и т.д.)
     @ElementCollection
     @CollectionTable(name = "university_programs", joinColumns = @JoinColumn(name = "university_id"))
     @Column(name = "program_name")

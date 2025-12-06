@@ -45,7 +45,6 @@ public class AiService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Пользователь не найден"));
 
-        // 1. Очистка и подготовка ключевых слов (берем слова длиннее 3 букв)
         List<String> keywords = Arrays.stream(userPrompt.split("\\s+"))
                 .map(s -> s.replaceAll("[^a-zA-Zа-яА-Я0-9]", "")) // убираем знаки препинания
                 .filter(s -> s.length() > 3)
@@ -53,21 +52,17 @@ public class AiService {
 
         List<University> relevantUniversities;
 
-        // 2. Умный поиск (ОДИН ЗАПРОС вместо цикла)
         if (keywords.isEmpty() || isGreeting(userPrompt)) {
             relevantUniversities = new ArrayList<>();
         } else {
             Specification<University> spec = UniversitySpecification.searchByKeywords(keywords);
-            // Ищем вузы по спецификации, берем первые 5 совпадений
             relevantUniversities = universityRepository.findAll(spec, PageRequest.of(0, 5)).getContent();
         }
 
-        // Если ничего не нашли, но вопрос про поступление - подкинем топовые вузы
         if (relevantUniversities.isEmpty() && !isGreeting(userPrompt)) {
             relevantUniversities = universityRepository.findTopRated(PageRequest.of(0, 3));
         }
 
-        // 3. Формирование контекста
         String dbContext = formatUniversityData(relevantUniversities);
         String systemInstruction = String.format(SYSTEM_PROMPT_TEMPLATE,
                 user.getFirstName(),
@@ -75,12 +70,10 @@ public class AiService {
                 user.getEntScore() != null ? user.getEntScore() : "Нет",
                 dbContext);
 
-        // 4. Сборка истории чата
         List<GeminiRequest.Content> conversation = new ArrayList<>();
         conversation.add(new GeminiRequest.Content("user", List.of(new GeminiRequest.Part(systemInstruction))));
         conversation.add(new GeminiRequest.Content("model", List.of(new GeminiRequest.Part("Понял. Готов отвечать."))));
 
-        // Добавляем историю переписки (последние 4 сообщения, чтобы не перегружать контекст)
         List<AiRequest> history = aiRequestRepository.findLastRequests(userId, PageRequest.of(0, 4));
         Collections.reverse(history);
         for (AiRequest req : history) {
@@ -90,10 +83,8 @@ public class AiService {
 
         conversation.add(new GeminiRequest.Content("user", List.of(new GeminiRequest.Part(userPrompt))));
 
-        // 5. Запрос к AI
         String aiText = geminiClient.generateChat(conversation);
 
-        // 6. Сохранение
         saveRequest(user, userPrompt, aiText);
 
         return aiText;
@@ -104,7 +95,6 @@ public class AiService {
 
         String targetMajor = (major != null && !major.isEmpty()) ? major : "IT";
 
-        // Более точный и плавный промпт
         String prompt = String.format("""
                 Роль: Аналитик данных ЕНТ (Казахстан, 2025).
                 Задача: Рассчитать вероятность гранта (0-100%%) на основе статистики.
